@@ -12,6 +12,10 @@ plugins:
       nomad_north_jupyter.north_tools:jupyter:
         north_tool:
           image: ghcr.io/kuennethgroup/nomad-oasis-distro/jupyter:main
+      nomad_auto_upload_tables.parsers:tabular_guess_parser:
+        api_key: '${ACADEMIC_CLOUD_API_KEY}'
+        model: openai-gpt-oss-120b
+        base_url: https://chat-ai.academiccloud.de/v1          
 
 meta:
   deployment: "oasis"

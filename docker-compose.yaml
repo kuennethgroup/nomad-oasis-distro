@@ -135,6 +135,7 @@ services:
       NOMAD_MONGO_HOST: mongo
       NOMAD_LOGSTASH_HOST: logtransfer
       NOMAD_TEMPORAL_HOST: temporal
+      ACADEMIC_CLOUD_API_KEY: ${ACADEMIC_CLOUD_API_KEY}
     env_file:
       - ./.env
     depends_on:
@@ -269,6 +270,7 @@ services:
       NOMAD_LOGSTASH_HOST: logtransfer
       NOMAD_NORTH_HUB_HOST: north
       NOMAD_TEMPORAL_HOST: temporal
+      ACADEMIC_CLOUD_API_KEY: ${ACADEMIC_CLOUD_API_KEY}
     env_file:
       - ./.env
     depends_on:
