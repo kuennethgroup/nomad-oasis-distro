@@ -223,7 +223,9 @@ to work or redirect.
 #### Persistent storage
 
 Persistent database and NORTH state use the explicit named volumes declared at
-the bottom of `docker-compose.yaml`. NOMAD files intentionally use the
+the bottom of `docker-compose.yaml`: `nomad_oasis_mongo`,
+`nomad_oasis_mongo_config`, `nomad_oasis_elastic`, `nomad_oasis_postgresql`,
+and `nomad_oasis_north`. NOMAD files intentionally use the
 deterministic `./.volumes/fs` bind mount because app, workers, and NORTH tools
 need the same host path. Configuration files, setup scripts, and the Docker
 socket are also intentional bind mounts; none of these are anonymous volumes.

@@ -31,6 +31,7 @@ services:
       - MONGO_LOG_DIR=/dev/null
     volumes:
       - mongo:/data/db
+      - mongo_config:/data/configdb
       - ./.volumes/mongo:/backup
     command: mongod --logpath=/dev/null # --quiet
     healthcheck:
@@ -399,6 +400,8 @@ services:
 volumes:
   mongo:
     name: "nomad_oasis_mongo"
+  mongo_config:
+    name: "nomad_oasis_mongo_config"
   elastic:
     name: "nomad_oasis_elastic"
   postgresql:
