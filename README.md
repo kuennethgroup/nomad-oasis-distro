@@ -190,23 +190,63 @@ Before you can host your Oasis securely under a domain, you will have to go thro
    + - ./tls/selfsigned.key:/etc/nginx/tls/mounted-nomad-oasis.key:ro  # Path to your TLS private key
    ```
 
+#### Deploying behind the shared Traefik proxy
+
+The production deployment on Galadriel uses the existing Traefik instance to
+terminate TLS and discover the NOMAD proxy through Docker labels. The NOMAD
+Nginx container therefore keeps using `configs/nginx_http.conf` internally and
+does not publish host ports 80 or 443.
+
+The `proxy` service is attached to the external `public-network`. Traefik routes
+`https://data.ing.uni-bayreuth.de` to port 80 of that container and adds HSTS
+headers. The public Oasis URL is:
+
+```text
+https://data.ing.uni-bayreuth.de/nomad-oasis
+```
+
+The HARICA certificate is owned by the shared Traefik deployment, not mounted
+into the NOMAD container. Install a full-chain certificate and its private key
+under `/home/chris/deploys/traefik/certs/data/`, then add a watched dynamic TLS
+file at `/home/chris/deploys/traefik/traefik-dynamic-conf/data.yml`:
+
+```yaml
+tls:
+  certificates:
+    - certFile: /etc/traefik/certs/data/data.ing.uni-bayreuth.de.fullchain.pem
+      keyFile: /etc/traefik/certs/data/data.ing.uni-bayreuth.de.key
+```
+
+Traefik currently exposes HTTPS only. HTTP requests on port 80 are not expected
+to work or redirect.
+
+#### Persistent storage
+
+Persistent database and NORTH state use the explicit named volumes declared at
+the bottom of `docker-compose.yaml`. NOMAD files intentionally use the
+deterministic `./.volumes/fs` bind mount because app, workers, and NORTH tools
+need the same host path. Configuration files, setup scripts, and the Docker
+socket are also intentional bind mounts; none of these are anonymous volumes.
+
+The application image does not declare a Dockerfile `VOLUME`. This prevents
+Docker from allocating a random anonymous volume when the image is started
+without a Compose mount. Never use `docker compose down -v` for this production
+deployment, because `-v` removes named persistent volumes.
+
 
 #### Updating the image
 Any pushes to the main branch of this repository, such as when [adding a plugin](#adding-a-plugin), will trigger a pipeline that generates a new app and jupyter image.
 
-1. To update your local image you need to shut down NOMAD using
+1. Wait for the GitHub Actions image build to complete, then pull the image and
+   recreate containers that use it:
 
     ```sh
-    docker compose down
+    docker compose pull
+    docker compose up -d --force-recreate
     ```
 
-    and then repeat steps 5. and 7. above.
-
-2. You can remove unused images to free up space by running
-
-    ```sh
-    docker image prune -a
-    ```
+2. Check `docker compose ps` and the public health endpoint before removing any
+   old images manually. Do not prune volumes automatically.
 
 #### NOMAD Remote Tools Hub (NORTH)
 

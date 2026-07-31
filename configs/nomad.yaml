@@ -1,6 +1,8 @@
 services:
-  api_host: "localhost"
+  api_host: "data.ing.uni-bayreuth.de"
   api_base_path: "/nomad-oasis"
+  https: true
+  https_upload: true
 
 oasis:
   is_oasis: true
@@ -19,8 +21,8 @@ plugins:
 
 meta:
   deployment: "oasis"
-  deployment_url: "https://my-oasis.org/api"
-  maintainer_email: "me@my-oasis.org"
+  deployment_url: "https://data.ing.uni-bayreuth.de/nomad-oasis/api"
+  maintainer_email: "rayan967@gmail.com"
 
 logstash:
   enabled: false

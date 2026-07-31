@@ -169,8 +169,6 @@ USER nomad
 EXPOSE 8000
 EXPOSE 9000
 
-VOLUME /app/.volumes/fs
-
 FROM final AS cpu_action_final
 
 COPY --chown=nomad:${UID} --from=cpu_action_builder /opt/venv /opt/venv
