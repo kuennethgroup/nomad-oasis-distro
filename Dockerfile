@@ -84,10 +84,6 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=source=.git,target=.git,type=bind \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    --mount=type=secret,id=PRIVATE_REPO_TOKEN,env=PRIVATE_REPO_TOKEN,required=true \
-    GIT_CONFIG_COUNT=1 \
-    GIT_CONFIG_KEY_0="url.https://x-access-token:${PRIVATE_REPO_TOKEN}@github.com/.insteadOf" \
-    GIT_CONFIG_VALUE_0="https://github.com/" \
     uv sync --extra plugins
 
 
@@ -140,10 +136,6 @@ WORKDIR /app
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    --mount=type=secret,id=PRIVATE_REPO_TOKEN,env=PRIVATE_REPO_TOKEN,required=true \
-    GIT_CONFIG_COUNT=1 \
-    GIT_CONFIG_KEY_0="url.https://x-access-token:${PRIVATE_REPO_TOKEN}@github.com/.insteadOf" \
-    GIT_CONFIG_VALUE_0="https://github.com/" \
     uv sync --extra plugins --extra gpu-action
 
 FROM builder AS cpu_action_builder
@@ -153,10 +145,6 @@ WORKDIR /app
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    --mount=type=secret,id=PRIVATE_REPO_TOKEN,env=PRIVATE_REPO_TOKEN,required=true \
-    GIT_CONFIG_COUNT=1 \
-    GIT_CONFIG_KEY_0="url.https://x-access-token:${PRIVATE_REPO_TOKEN}@github.com/.insteadOf" \
-    GIT_CONFIG_VALUE_0="https://github.com/" \
     uv sync --extra plugins --extra cpu-action
 
 FROM base_final AS final
@@ -226,10 +214,6 @@ COPY --from=uv_image /uv /bin/uv
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    --mount=type=secret,id=PRIVATE_REPO_TOKEN,env=PRIVATE_REPO_TOKEN,required=true \
-    GIT_CONFIG_COUNT=1 \
-    GIT_CONFIG_KEY_0="url.https://x-access-token:${PRIVATE_REPO_TOKEN}@github.com/.insteadOf" \
-    GIT_CONFIG_VALUE_0="https://github.com/" \
     # Use inexact to avoid removing pre-installed packages in the environment
     # Use no-install-project to skip installing the current project (`nomad-distribution`)
     uv sync --extra plugins --extra jupyter --no-install-project --inexact
