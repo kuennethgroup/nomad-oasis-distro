@@ -152,6 +152,9 @@ def test_distribution_wires_the_policy_into_all_access_paths():
     compose = (ROOT / "docker-compose.yaml").read_text()
     nginx = (ROOT / "configs/nginx_base_conf").read_text()
     north = (ROOT / "configs/jupyterhub_ubt_config.py").read_text()
+    restricted_page = (
+        ROOT / "configs/access/access-restricted.html"
+    ).read_text()
 
     assert "python -m nomad_ubt_access admin run app" in compose
     assert 'NOMAD_UBT_ALLOWED_EMAIL_DOMAINS: "uni-bayreuth.de"' in compose
@@ -159,4 +162,7 @@ def test_distribution_wires_the_policy_into_all_access_paths():
     assert "access-policy.js" in nginx
     assert "access-restricted" in nginx
     assert 'scope = ["openid", "profile", "email"]' in north
+    assert "protocol/openid-connect/logout" in restricted_page
+    assert "post_logout_redirect_uri" in restricted_page
+    assert "Authorization=; Path=" in restricted_page
     compile(north, "configs/jupyterhub_ubt_config.py", "exec")

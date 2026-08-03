@@ -235,7 +235,9 @@ the domain for Keycloak, personal access, simple, and upload tokens without
 affecting anonymous requests or internal API-secret authentication. A
 policy-specific HTTP 403 response causes the GUI to open
 `/nomad-oasis/access-restricted`. The check is server-side; the JavaScript
-redirect is only the user-facing error handling.
+redirect is only the user-facing error handling. The restriction page clears
+the rejected NOMAD authorization cookie and its logout link ends the central
+Keycloak session before returning to the GUI.
 
 NORTH uses `configs/jupyterhub_ubt_config.py` to apply the same verified-domain
 rule before JupyterHub creates a user session. It requests the OIDC `email`

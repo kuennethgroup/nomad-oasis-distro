@@ -61,7 +61,47 @@
         account, update and verify it in NOMAD's central account management,
         then sign in again.
       </p>
-      <p><a href="/nomad-oasis/gui/">Return to NOMAD</a></p>
+      <p>
+        <a
+          id="logout-link"
+          href="https://nomad-lab.eu/fairdi/keycloak/auth/realms/fairdi_nomad_prod/protocol/openid-connect/logout?client_id=nomad_public&amp;post_logout_redirect_uri=https%3A%2F%2Fdata.ing.uni-bayreuth.de%2Fnomad-oasis%2Fgui%2F"
+        >Log out and return to NOMAD</a>
+      </p>
     </main>
+    <script>
+      (function () {
+        "use strict";
+
+        const logoutLink = document.getElementById("logout-link");
+        const logoutEndpoint =
+          "https://nomad-lab.eu/fairdi/keycloak/auth/realms/" +
+          "fairdi_nomad_prod/protocol/openid-connect/logout";
+
+        function clearNomadAuthorizationCookie() {
+          ["/nomad-oasis/api", "/nomad-oasis/", "/"].forEach(function (path) {
+            document.cookie =
+              "Authorization=; Path=" + path +
+              "; Max-Age=0; SameSite=Strict; Secure";
+          });
+        }
+
+        // Remove the rejected NOMAD token immediately. Otherwise opening the
+        // GUI again before Keycloak finishes logout can trigger another 403.
+        clearNomadAuthorizationCookie();
+
+        logoutLink.addEventListener("click", function (event) {
+          event.preventDefault();
+          clearNomadAuthorizationCookie();
+
+          const logoutUrl = new URL(logoutEndpoint);
+          logoutUrl.searchParams.set("client_id", "nomad_public");
+          logoutUrl.searchParams.set(
+            "post_logout_redirect_uri",
+            window.location.origin + "/nomad-oasis/gui/"
+          );
+          window.location.assign(logoutUrl.toString());
+        });
+      })();
+    </script>
   </body>
 </html>
