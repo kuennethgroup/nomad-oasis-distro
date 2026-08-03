@@ -271,6 +271,9 @@ services:
       NOMAD_LOGSTASH_HOST: logtransfer
       NOMAD_NORTH_HUB_HOST: north
       NOMAD_TEMPORAL_HOST: temporal
+      NOMAD_UBT_ALLOWED_EMAIL_DOMAINS: "uni-bayreuth.de"
+      NOMAD_UBT_REQUIRE_VERIFIED_EMAIL: "true"
+      NOMAD_UBT_RESTRICTION_URL: "/nomad-oasis/access-restricted"
       ACADEMIC_CLOUD_API_KEY: ${ACADEMIC_CLOUD_API_KEY}
     env_file:
       - ./.env
@@ -284,7 +287,7 @@ services:
     volumes:
       # - ./configs/nomad.yaml:/app/nomad.yaml
       - ./.volumes/fs:/app/.volumes/fs
-    command: python -m nomad.cli admin run app --with-gui --gunicorn --host 0.0.0.0 --workers 2
+    command: python -m nomad_ubt_access admin run app --with-gui --gunicorn --host 0.0.0.0 --workers 2
     healthcheck:
       test:
         - "CMD"
@@ -307,6 +310,7 @@ services:
       NOMAD_API_URL: "http://app:8000/nomad-oasis/api/v1"
       DOCKER_PREFIX: "nomad-oasis-north"
       DOCKER_NETWORK: "nomad_oasis_network"
+      NOMAD_UBT_ALLOWED_EMAIL_DOMAINS: "uni-bayreuth.de"
     env_file:
       - ./.env.north
     volumes:
@@ -315,6 +319,9 @@ services:
       - "/var/run/docker.sock:/var/run/docker.sock:rw"
       # Bind Docker volume on host for JupyterHub database and cookie secrets
       - "nomad_north:/data"
+      # Extend the image's standard config with the same UBT policy as NOMAD.
+      - "./configs/jupyterhub_ubt_config.py:/etc/jupyterhub/jupyterhub_ubt_config.py:ro"
+    command: ["jupyterhub", "-f", "/etc/jupyterhub/jupyterhub_ubt_config.py"]
     healthcheck:
       test:
         - "CMD"
@@ -376,6 +383,8 @@ services:
       - ./configs/nginx_base_conf:/etc/nginx/conf.d/nginx_base_conf:ro
       # Traefik terminates TLS and forwards HTTP on the Docker network.
       - ./configs/nginx_http.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./configs/access/access-policy.js:/usr/share/nginx/html/access-policy.js:ro
+      - ./configs/access/access-restricted.html:/usr/share/nginx/html/access-restricted.html:ro
     depends_on:
       app:
         condition: service_healthy

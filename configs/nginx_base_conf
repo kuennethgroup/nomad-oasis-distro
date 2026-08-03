@@ -23,11 +23,28 @@ location / {
     proxy_pass http://nomad-app-backend;
 }
 
+location = /nomad-oasis/access-policy.js {
+    alias /usr/share/nginx/html/access-policy.js;
+    default_type application/javascript;
+    add_header Cache-Control "no-store";
+}
+
+location = /nomad-oasis/access-restricted {
+    alias /usr/share/nginx/html/access-restricted.html;
+    default_type text/html;
+    add_header Cache-Control "no-store";
+}
+
 location ~ /nomad-oasis\/?(gui)?$ {
     rewrite ^ /nomad-oasis/gui/ permanent;
 }
 
 location /nomad-oasis/gui/ {
+    # Inject a small response handler without modifying NOMAD's minified GUI.
+    # The backend remains the authoritative enforcement point.
+    proxy_set_header Accept-Encoding "";
+    sub_filter_once on;
+    sub_filter '</head>' '<script src="/nomad-oasis/access-policy.js"></script></head>';
     proxy_intercept_errors on;
     error_page 404 = @redirect_to_index;
     proxy_pass http://nomad-app-backend;
@@ -35,6 +52,9 @@ location /nomad-oasis/gui/ {
 
 location @redirect_to_index {
     rewrite ^ /nomad-oasis/gui/index.html break;
+    proxy_set_header Accept-Encoding "";
+    sub_filter_once on;
+    sub_filter '</head>' '<script src="/nomad-oasis/access-policy.js"></script></head>';
     proxy_pass http://nomad-app-backend;
 }
 

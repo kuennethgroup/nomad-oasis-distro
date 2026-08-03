@@ -116,7 +116,7 @@ services:
       [
         "python",
         "-m",
-        "nomad.cli",
+        "nomad_ubt_access",
         "admin",
         "run",
         "appworker",

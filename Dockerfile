@@ -80,11 +80,13 @@ RUN apt-get update \
 # Install UV
 COPY --from=uv_image /uv /bin/uv
 
+COPY nomad_ubt_access ./nomad_ubt_access
+
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=source=.git,target=.git,type=bind \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync --extra plugins
+    uv sync --extra plugins --no-editable
 
 
 COPY scripts ./scripts
@@ -136,7 +138,7 @@ WORKDIR /app
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync --extra plugins --extra gpu-action
+    uv sync --extra plugins --extra gpu-action --no-editable
 
 FROM builder AS cpu_action_builder
 
@@ -145,7 +147,7 @@ WORKDIR /app
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync --extra plugins --extra cpu-action
+    uv sync --extra plugins --extra cpu-action --no-editable
 
 FROM base_final AS final
 

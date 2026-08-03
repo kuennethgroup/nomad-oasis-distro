@@ -220,6 +220,46 @@ tls:
 Traefik currently exposes HTTPS only. HTTP requests on port 80 are not expected
 to work or redirect.
 
+#### Restricting authenticated access to UBT accounts
+
+This distribution keeps NOMAD's central Keycloak login and registration flow,
+but applies an additional authorization policy after NOMAD validates a login
+token. The production Compose configuration permits only users whose signed
+Keycloak claims contain:
+
+- an email address with the exact domain `uni-bayreuth.de`; and
+- the boolean claim `email_verified: true`.
+
+The application is started through the `nomad_ubt_access` wrapper. It enforces
+the domain for Keycloak, personal access, simple, and upload tokens without
+affecting anonymous requests or internal API-secret authentication. A
+policy-specific HTTP 403 response causes the GUI to open
+`/nomad-oasis/access-restricted`. The check is server-side; the JavaScript
+redirect is only the user-facing error handling.
+
+NORTH uses `configs/jupyterhub_ubt_config.py` to apply the same verified-domain
+rule before JupyterHub creates a user session. It requests the OIDC `email`
+scope in addition to `openid` and `profile`.
+
+The policy is configured independently of NOMAD's own configuration model:
+
+```yaml
+environment:
+  NOMAD_UBT_ALLOWED_EMAIL_DOMAINS: "uni-bayreuth.de"
+  NOMAD_UBT_REQUIRE_VERIFIED_EMAIL: "true"
+  NOMAD_UBT_RESTRICTION_URL: "/nomad-oasis/access-restricted"
+```
+
+Multiple exact domains can be comma-separated. An empty
+`NOMAD_UBT_ALLOWED_EMAIL_DOMAINS` disables the distro policy. Do not use a
+suffix such as `bayreuth.de`: exact comparison intentionally rejects subdomains
+and lookalike domains.
+
+The central Keycloak access token and user-info response must expose `email`
+and `email_verified`. Verify this with a test account before enabling the policy
+on another Keycloak realm. Personal access tokens do not contain OIDC claims,
+so they are checked against the current email stored for their NOMAD user.
+
 #### Persistent storage
 
 Persistent database and NORTH state use the explicit named volumes declared at
