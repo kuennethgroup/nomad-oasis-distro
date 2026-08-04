@@ -23,7 +23,16 @@ def _allowed_domains() -> frozenset[str]:
     )
 
 
+def _allowed_emails() -> frozenset[str]:
+    return frozenset(
+        email.strip().lower()
+        for email in os.environ.get("NOMAD_UBT_ALLOWED_EMAILS", "").split(",")
+        if email.strip()
+    )
+
+
 ALLOWED_EMAIL_DOMAINS = _allowed_domains()
+ALLOWED_EMAILS = _allowed_emails()
 
 
 class UBTEmailDomainOAuthenticator(GenericOAuthenticator):
@@ -37,18 +46,25 @@ class UBTEmailDomainOAuthenticator(GenericOAuthenticator):
         email = user_info.get("email")
         verified = user_info.get("email_verified") is True
 
-        if not verified or not email or email.count("@") != 1:
+        if not verified or not isinstance(email, str) or email.strip().count("@") != 1:
             self.log.warning("Rejecting login without a verified email")
             return False
 
-        domain = email.rsplit("@", 1)[1].strip().lower()
-        allowed = domain in ALLOWED_EMAIL_DOMAINS
-        if not allowed:
+        normalized_email = email.strip().lower()
+        local_part, domain = normalized_email.rsplit("@", 1)
+        if not local_part or not domain:
+            self.log.warning("Rejecting login without a valid email")
+            return False
+        if ALLOWED_EMAIL_DOMAINS and domain not in ALLOWED_EMAIL_DOMAINS:
             self.log.warning("Rejecting login from a non-authorized email domain")
-        return allowed
+            return False
+        if ALLOWED_EMAILS and normalized_email not in ALLOWED_EMAILS:
+            self.log.warning("Rejecting login for a non-authorized account")
+            return False
+        return True
 
 
-if ALLOWED_EMAIL_DOMAINS:
+if ALLOWED_EMAIL_DOMAINS or ALLOWED_EMAILS:
     c.JupyterHub.authenticator_class = UBTEmailDomainOAuthenticator
     c.Authenticator.allow_all = False
     # Authorization is implemented by check_allowed rather than allowed_users.

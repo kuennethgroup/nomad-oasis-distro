@@ -38,6 +38,14 @@ def _normalize_domains(value: str | None) -> frozenset[str]:
     )
 
 
+def _normalize_emails(value: str | None) -> frozenset[str]:
+    if not value:
+        return frozenset()
+    return frozenset(
+        email.strip().lower() for email in value.split(",") if email.strip()
+    )
+
+
 def email_domain(email: str | None) -> str | None:
     """Return an exact, normalized domain for a syntactically simple email."""
     if not isinstance(email, str) or not email:
@@ -54,6 +62,7 @@ def email_domain(email: str | None) -> str | None:
 @dataclass(frozen=True)
 class AccessPolicy:
     allowed_domains: frozenset[str]
+    allowed_emails: frozenset[str] = frozenset()
     require_verified_email: bool = True
     restriction_url: str = "/nomad-oasis/access-restricted"
 
@@ -63,6 +72,7 @@ class AccessPolicy:
             allowed_domains=_normalize_domains(
                 os.getenv("NOMAD_UBT_ALLOWED_EMAIL_DOMAINS")
             ),
+            allowed_emails=_normalize_emails(os.getenv("NOMAD_UBT_ALLOWED_EMAILS")),
             require_verified_email=_parse_bool(
                 os.getenv("NOMAD_UBT_REQUIRE_VERIFIED_EMAIL"), default=True
             ),
@@ -74,7 +84,7 @@ class AccessPolicy:
 
     @property
     def enabled(self) -> bool:
-        return bool(self.allowed_domains)
+        return bool(self.allowed_domains or self.allowed_emails)
 
     def deny(self, reason: str) -> None:
         raise HTTPException(
@@ -83,8 +93,8 @@ class AccessPolicy:
                 "code": ACCESS_RESTRICTION_CODE,
                 "reason": reason,
                 "message": (
-                    "This NOMAD Oasis is restricted to verified University "
-                    "of Bayreuth email accounts."
+                    "This NOMAD Oasis is restricted to approved, verified "
+                    "University of Bayreuth email accounts."
                 ),
                 "restriction_url": self.restriction_url,
             },
@@ -93,8 +103,13 @@ class AccessPolicy:
 
     def validate_email(self, email: str | None) -> None:
         domain = email_domain(email)
-        if domain not in self.allowed_domains:
+        if domain is None:
             self.deny("email_domain")
+        if self.allowed_domains and domain not in self.allowed_domains:
+            self.deny("email_domain")
+        normalized_email = email.strip().lower()
+        if self.allowed_emails and normalized_email not in self.allowed_emails:
+            self.deny("email_allowlist")
 
     def validate_keycloak_claims(
         self, claims: dict[str, Any], user_email: str | None
@@ -151,9 +166,9 @@ def build_guarded_resolver(
         if user is None:
             return None
 
-        # This applies the domain restriction to Keycloak, personal access,
-        # simple, and upload tokens. Internal API-secret authentication does
-        # not resolve a human user through this function and is unaffected.
+        # This applies the email policy to Keycloak, personal access, simple,
+        # and upload tokens. Internal API-secret authentication does not
+        # resolve a human user through this function and is unaffected.
         policy.validate_email(getattr(user, "email", None))
 
         keycloak_token = _keycloak_token_from_request(

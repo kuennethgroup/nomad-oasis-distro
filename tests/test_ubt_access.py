@@ -15,11 +15,19 @@ from nomad_ubt_access.policy import (
 
 
 ROOT = Path(__file__).parent.parent
+ALLOWED_EMAILS = frozenset(
+    {
+        "user@uni-bayreuth.de",
+        "first@uni-bayreuth.de",
+        "second@uni-bayreuth.de",
+    }
+)
 
 
 def policy() -> AccessPolicy:
     return AccessPolicy(
         allowed_domains=frozenset({"uni-bayreuth.de"}),
+        allowed_emails=ALLOWED_EMAILS,
         require_verified_email=True,
     )
 
@@ -69,6 +77,12 @@ def test_verified_ubt_keycloak_user_is_allowed():
         },
     )
     assert user.email == "User@uni-bayreuth.de"
+
+
+def test_ubt_user_not_in_allowlist_is_denied():
+    with pytest.raises(HTTPException) as exc_info:
+        guarded_user("not-listed@uni-bayreuth.de")
+    assert restriction_reason(exc_info) == "email_allowlist"
 
 
 @pytest.mark.parametrize(
@@ -128,6 +142,24 @@ def test_personal_access_token_uses_the_stored_user_email():
     )
 
 
+def test_empty_allowlist_preserves_domain_only_policy():
+    domain_policy = AccessPolicy(
+        allowed_domains=frozenset({"uni-bayreuth.de"}),
+    )
+    domain_policy.validate_email("any-user@uni-bayreuth.de")
+
+
+def test_allowlist_is_loaded_case_insensitively(monkeypatch):
+    monkeypatch.setenv(
+        "NOMAD_UBT_ALLOWED_EMAILS",
+        " User@UNI-BAYREUTH.DE, Other@uni-bayreuth.de ",
+    )
+    loaded = AccessPolicy.from_environment()
+    assert loaded.allowed_emails == frozenset(
+        {"user@uni-bayreuth.de", "other@uni-bayreuth.de"}
+    )
+
+
 def test_anonymous_access_is_not_changed():
     resolver = build_guarded_resolver(
         lambda **_kwargs: None,
@@ -150,14 +182,15 @@ def test_install_is_idempotent(monkeypatch):
 
 def test_distribution_wires_the_policy_into_all_access_paths():
     compose = (ROOT / "docker-compose.yaml").read_text()
+    dockerfile = (ROOT / "Dockerfile").read_text()
     nginx = (ROOT / "configs/nginx_base_conf").read_text()
     north = (ROOT / "configs/jupyterhub_ubt_config.py").read_text()
-    restricted_page = (
-        ROOT / "configs/access/access-restricted.html"
-    ).read_text()
+    restricted_page = (ROOT / "configs/access/access-restricted.html").read_text()
 
     assert "python -m nomad_ubt_access admin run app" in compose
+    assert "--reinstall-package nomad-distribution" in dockerfile
     assert 'NOMAD_UBT_ALLOWED_EMAIL_DOMAINS: "uni-bayreuth.de"' in compose
+    assert "${NOMAD_UBT_ALLOWED_EMAILS:?" in compose
     assert "jupyterhub_ubt_config.py" in compose
     assert "access-policy.js" in nginx
     assert "access-restricted" in nginx

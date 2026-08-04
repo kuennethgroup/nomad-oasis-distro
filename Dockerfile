@@ -86,7 +86,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=source=.git,target=.git,type=bind \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync --extra plugins --no-editable
+    uv sync --extra plugins --no-editable --reinstall-package nomad-distribution
 
 
 COPY scripts ./scripts

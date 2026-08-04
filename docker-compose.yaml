@@ -1,3 +1,7 @@
+x-ubt-access-environment: &ubt-access-environment
+  NOMAD_UBT_ALLOWED_EMAIL_DOMAINS: "uni-bayreuth.de"
+  NOMAD_UBT_ALLOWED_EMAILS: "${NOMAD_UBT_ALLOWED_EMAILS:?Set NOMAD_UBT_ALLOWED_EMAILS in .env}"
+
 services:
   # the search engine
   elastic:
@@ -263,6 +267,7 @@ services:
     platform: linux/amd64
     container_name: nomad_oasis_app
     environment:
+      <<: *ubt-access-environment
       NOMAD_SERVICE: nomad_oasis_app
       NOMAD_SERVICES_API_PORT: 80
       NOMAD_FS_EXTERNAL_WORKING_DIRECTORY: "$PWD"
@@ -271,7 +276,6 @@ services:
       NOMAD_LOGSTASH_HOST: logtransfer
       NOMAD_NORTH_HUB_HOST: north
       NOMAD_TEMPORAL_HOST: temporal
-      NOMAD_UBT_ALLOWED_EMAIL_DOMAINS: "uni-bayreuth.de"
       NOMAD_UBT_REQUIRE_VERIFIED_EMAIL: "true"
       NOMAD_UBT_RESTRICTION_URL: "/nomad-oasis/access-restricted"
       ACADEMIC_CLOUD_API_KEY: ${ACADEMIC_CLOUD_API_KEY}
@@ -307,10 +311,10 @@ services:
     platform: linux/amd64
     container_name: nomad_oasis_north
     environment:
+      <<: *ubt-access-environment
       NOMAD_API_URL: "http://app:8000/nomad-oasis/api/v1"
       DOCKER_PREFIX: "nomad-oasis-north"
       DOCKER_NETWORK: "nomad_oasis_network"
-      NOMAD_UBT_ALLOWED_EMAIL_DOMAINS: "uni-bayreuth.de"
     env_file:
       - ./.env.north
     volumes:
