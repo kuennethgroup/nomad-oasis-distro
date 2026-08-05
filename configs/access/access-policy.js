@@ -2,7 +2,7 @@
   "use strict";
 
   const restrictionCode = "email_domain_not_authorized";
-  const fallbackUrl = "/nomad-oasis/access-restricted";
+  const fallbackUrl = "/access-restricted";
   let redirecting = false;
 
   function redirectIfRestricted(status, body) {

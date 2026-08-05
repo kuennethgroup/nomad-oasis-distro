@@ -64,7 +64,7 @@ class AccessPolicy:
     allowed_domains: frozenset[str]
     allowed_emails: frozenset[str] = frozenset()
     require_verified_email: bool = True
-    restriction_url: str = "/nomad-oasis/access-restricted"
+    restriction_url: str = "/access-restricted"
 
     @classmethod
     def from_environment(cls) -> "AccessPolicy":
@@ -78,7 +78,7 @@ class AccessPolicy:
             ),
             restriction_url=os.getenv(
                 "NOMAD_UBT_RESTRICTION_URL",
-                "/nomad-oasis/access-restricted",
+                "/access-restricted",
             ),
         )
 

@@ -12,6 +12,7 @@ from nomad_ubt_access.policy import (
     email_domain,
     install,
 )
+from nomad_ubt_access.urls import install_root_path_urls
 
 
 ROOT = Path(__file__).parent.parent
@@ -180,22 +181,78 @@ def test_install_is_idempotent(monkeypatch):
         monkeypatch.setattr(auth_router, "_resolve_user_with_scopes", original)
 
 
+def test_root_path_urls_are_normalized(monkeypatch):
+    from nomad.config.models.config import Services
+
+    original = Services.api_url
+    config = SimpleNamespace(
+        services=Services(
+            api_host="data.ing.uni-bayreuth.de",
+            api_port=443,
+            api_base_path="",
+            https=True,
+        ),
+        ui=SimpleNamespace(app_base=None, north_base=None),
+    )
+    try:
+        assert install_root_path_urls(config) is True
+        assert config.services.api_url() == "https://data.ing.uni-bayreuth.de/api"
+        assert config.services.api_url(api="api/v1") == (
+            "https://data.ing.uni-bayreuth.de/api/v1"
+        )
+        assert config.ui.app_base == "https://data.ing.uni-bayreuth.de"
+        assert config.ui.north_base == "https://data.ing.uni-bayreuth.de/north"
+        assert install_root_path_urls(config) is False
+    finally:
+        monkeypatch.setattr(Services, "api_url", original)
+
+
 def test_distribution_wires_the_policy_into_all_access_paths():
     compose = (ROOT / "docker-compose.yaml").read_text()
     dockerfile = (ROOT / "Dockerfile").read_text()
     nginx = (ROOT / "configs/nginx_base_conf").read_text()
+    nomad_config = (ROOT / "configs/nomad.yaml").read_text()
     north = (ROOT / "configs/jupyterhub_ubt_config.py").read_text()
+    access_policy = (ROOT / "configs/access/access-policy.js").read_text()
     restricted_page = (ROOT / "configs/access/access-restricted.html").read_text()
+    readme = (ROOT / "README.md").read_text()
 
     assert "python -m nomad_ubt_access admin run app" in compose
+    assert "python -m nomad_ubt_access admin run action-internal-worker" in compose
+    assert "python -m nomad.cli" not in compose
     assert "--reinstall-package nomad-distribution" in dockerfile
     assert 'NOMAD_UBT_ALLOWED_EMAIL_DOMAINS: "uni-bayreuth.de"' in compose
     assert "${NOMAD_UBT_ALLOWED_EMAILS:?" in compose
+    assert 'NOMAD_UBT_RESTRICTION_URL: "/access-restricted"' in compose
+    assert "NOMAD_SERVICES_API_PORT: 443" in compose
+    assert 'NOMAD_API_URL: "http://app:8000/api/v1"' in compose
+    assert 'BASE_URL: "/north/"' in compose
+    assert (
+        'OAUTH_CALLBACK_URL: "https://data.ing.uni-bayreuth.de/north/hub/oauth_callback"'
+        in compose
+    )
+    assert "http://localhost:9000/north/hub/health" in compose
     assert "jupyterhub_ubt_config.py" in compose
-    assert "access-policy.js" in nginx
-    assert "access-restricted" in nginx
+    assert 'api_base_path: ""' in nomad_config
+    assert "api_port: 443" in nomad_config
+    assert 'deployment_url: "https://data.ing.uni-bayreuth.de/api"' in nomad_config
+    assert 'app_base: "https://data.ing.uni-bayreuth.de"' in nomad_config
+    assert 'north_base: "https://data.ing.uni-bayreuth.de/north"' in nomad_config
+    assert "location = / {" in nginx
+    assert "return 302 /gui/;" in nginx
+    assert "location /gui/" in nginx
+    assert "location /north/" in nginx
+    assert "location = /access-policy.js" in nginx
+    assert "location = /access-restricted" in nginx
+    assert 'fallbackUrl = "/access-restricted"' in access_policy
     assert 'scope = ["openid", "profile", "email"]' in north
     assert "protocol/openid-connect/logout" in restricted_page
     assert "post_logout_redirect_uri" in restricted_page
     assert "Authorization=; Path=" in restricted_page
+    assert 'window.location.origin + "/gui/"' in restricted_page
+    assert "/nomad-oasis/" not in nginx
+    assert "/nomad-oasis/" not in access_policy
+    assert "/nomad-oasis/" not in restricted_page
+    assert "galadriel" not in readme.lower()
+    assert "secret" not in readme.lower()
     compile(north, "configs/jupyterhub_ubt_config.py", "exec")

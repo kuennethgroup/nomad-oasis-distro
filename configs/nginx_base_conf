@@ -19,46 +19,46 @@ gzip_types
     application/x-javascript
     application/json;
 
-location / {
-    proxy_pass http://nomad-app-backend;
+location = / {
+    return 302 /gui/;
 }
 
-location = /nomad-oasis/access-policy.js {
+location = /access-policy.js {
     alias /usr/share/nginx/html/access-policy.js;
     default_type application/javascript;
     add_header Cache-Control "no-store";
 }
 
-location = /nomad-oasis/access-restricted {
+location = /access-restricted {
     alias /usr/share/nginx/html/access-restricted.html;
     default_type text/html;
     add_header Cache-Control "no-store";
 }
 
-location ~ /nomad-oasis\/?(gui)?$ {
-    rewrite ^ /nomad-oasis/gui/ permanent;
+location = /gui {
+    return 301 /gui/;
 }
 
-location /nomad-oasis/gui/ {
+location /gui/ {
     # Inject a small response handler without modifying NOMAD's minified GUI.
     # The backend remains the authoritative enforcement point.
     proxy_set_header Accept-Encoding "";
     sub_filter_once on;
-    sub_filter '</head>' '<script src="/nomad-oasis/access-policy.js"></script></head>';
+    sub_filter '</head>' '<script src="/access-policy.js"></script></head>';
     proxy_intercept_errors on;
     error_page 404 = @redirect_to_index;
     proxy_pass http://nomad-app-backend;
 }
 
 location @redirect_to_index {
-    rewrite ^ /nomad-oasis/gui/index.html break;
+    rewrite ^ /gui/index.html break;
     proxy_set_header Accept-Encoding "";
     sub_filter_once on;
-    sub_filter '</head>' '<script src="/nomad-oasis/access-policy.js"></script></head>';
+    sub_filter '</head>' '<script src="/access-policy.js"></script></head>';
     proxy_pass http://nomad-app-backend;
 }
 
-location /nomad-oasis/docs/ {
+location /docs/ {
     # This is added to force a redirect (302) when 404 otherwise
     # the assets are not loaded correctly (a broken page rendered)
     proxy_intercept_errors on;
@@ -67,7 +67,7 @@ location /nomad-oasis/docs/ {
 }
 
 location @docs404redirect {
-    return 302 /nomad-oasis/docs/404.html;
+    return 302 /docs/404.html;
 }
 
 location ~ \/gui\/(service-worker\.js|meta\.json)$ {
@@ -90,7 +90,7 @@ location ~ /api/v1/.*/download {
     proxy_pass http://nomad-app-backend;
 }
 
-location /nomad-oasis/north/ {
+location /north/ {
     client_max_body_size 500m;
     proxy_pass http://north:9000;
 
@@ -105,4 +105,8 @@ location /nomad-oasis/north/ {
     proxy_set_header X-Scheme $scheme;
 
     proxy_buffering off;
+}
+
+location / {
+    proxy_pass http://nomad-app-backend;
 }

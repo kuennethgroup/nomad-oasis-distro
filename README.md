@@ -70,28 +70,17 @@ This section covers the minimal steps for getting an Oasis running locally. Note
 
 4. Create a file for environment variables
 
-    Before running the containers, you should create a `.env` and a `.env.north` files in the root of the repository. This file is used to store sensitive information and is ignored by git.
-
-    If you want to generate the them with random secrets you can also run the following script from the root of the repository:
+    Before running the containers, create `.env` and `.env.north` files in
+    the repository root. These local files are ignored by git. The provided
+    script generates the required values:
 
     ```sh
     bash scripts/generate-env.sh
     ```
 
-    Alternatively you can create the `.env` and a `.env.north` files manually, At a minimum, you should add a secure secret for the API to `.env`:
-
-    ```
-    NOMAD_SERVICES_API_SECRET='***'
-    NOMAD_NORTH_HUB_SERVICE_API_TOKEN='***'
-    ```
-
-    If you want to use the NORTH (NOMAD Remote Tools Hub) you also need to add the following variables to the `.env.north` file:
-
-    ```
-    SERVICE_API_TOKEN='***'
-    JUPYTERHUB_CRYPT_KEY='***'
-    ```
-    The `SERVICE_API_TOKEN` and `NOMAD_NORTH_HUB_SERVICE_API_TOKEN` should be the same and will be used for authentication between the NORTH and the NOMAD API.
+    If you create them manually, follow the variable names and relationships in
+    `scripts/generate-env.sh`. NORTH requires matching service credentials in
+    both files.
 
     Note: The keys should be at least 64 characters long that can be generated with: `openssl rand -hex 32`
 
@@ -114,10 +103,10 @@ This section covers the minimal steps for getting an Oasis running locally. Note
 7. (Optional) You can now test that NOMAD is running with
 
     ```sh
-    curl localhost/nomad-oasis/alive
+    curl localhost/alive
     ```
 
-8. Finally, open [http://localhost/nomad-oasis](http://localhost/nomad-oasis) in your browser to start using your new NOMAD Oasis.
+8. Finally, open [http://localhost/](http://localhost/) in your browser to start using your new NOMAD Oasis.
 
 You can find more details on setting up and maintaining an Oasis in the NOMAD docs here: [https://nomad-lab.eu/prod/v1/staging/docs/howto/oasis/configure.html](https://nomad-lab.eu/prod/v1/staging/docs/howto/oasis/configure.html)
 
@@ -130,18 +119,22 @@ Before you can host your Oasis securely under a domain, you will have to go thro
 
    In production, your Oasis will be available under a domain name of your choice. This means that in some DNS server there is a record that points a domain name to your Oasis IP address.
 
-   Once this domain name is available, you also need to configure it in the NOMAD Oasis configuration. This can be done by adding the `services.api_host` field into your `nomad.yaml` (the default configuration is stored in `configs/nomad.yaml`). If your Oasis is available under the address `https://mydomainname/nomad-oasis`, you need to set it up like this:
+   Once this domain name is available, configure it in the NOMAD Oasis
+   configuration by setting `services.api_host` in `nomad.yaml` (the default
+   configuration is stored in `configs/nomad.yaml`). For an Oasis available
+   at `https://mydomainname/`, use:
 
    ```yaml
    services:
      api_host: mydomainname
    ```
 
-   Note that if your Oasis uses a subdomain like `https://mydomainname/mysubdomain/nomad-oasis`, you need to include that subdomain as well:
+   To publish at the domain root, set `services.api_base_path` to an empty
+   string:
 
    ```yaml
    services:
-     api_host: mydomainname/mysubdomain
+     api_base_path: ""
    ```
 
 2. Configuring Secure HTTP and HTTPS Connections
@@ -192,23 +185,22 @@ Before you can host your Oasis securely under a domain, you will have to go thro
 
 #### Deploying behind the shared Traefik proxy
 
-The production deployment on Galadriel uses the existing Traefik instance to
-terminate TLS and discover the NOMAD proxy through Docker labels. The NOMAD
-Nginx container therefore keeps using `configs/nginx_http.conf` internally and
-does not publish host ports 80 or 443.
+The production Docker deployment uses a shared Traefik instance to terminate
+TLS and discover the NOMAD proxy through Docker labels. The NOMAD Nginx
+container therefore keeps using `configs/nginx_http.conf` internally and does
+not publish host ports 80 or 443.
 
 The `proxy` service is attached to the external `public-network`. Traefik routes
 `https://data.ing.uni-bayreuth.de` to port 80 of that container and adds HSTS
 headers. The public Oasis URL is:
 
 ```text
-https://data.ing.uni-bayreuth.de/nomad-oasis
+https://data.ing.uni-bayreuth.de/
 ```
 
-The HARICA certificate is owned by the shared Traefik deployment, not mounted
-into the NOMAD container. Install a full-chain certificate and its private key
-under `/home/chris/deploys/traefik/certs/data/`, then add a watched dynamic TLS
-file at `/home/chris/deploys/traefik/traefik-dynamic-conf/data.yml`:
+The HARICA certificate is managed by the shared Traefik deployment rather than
+mounted into the NOMAD container. Its watched dynamic TLS configuration uses
+the paths exposed inside the Traefik container:
 
 ```yaml
 tls:
@@ -234,10 +226,10 @@ Keycloak claims contain:
 
 The application is started through the `nomad_ubt_access` wrapper. It enforces
 the domain and exact email allowlist for Keycloak, personal access, simple, and
-upload tokens without affecting anonymous requests or internal API-secret
+upload tokens without affecting anonymous requests or internal service
 authentication. A
 policy-specific HTTP 403 response causes the GUI to open
-`/nomad-oasis/access-restricted`. The check is server-side; the JavaScript
+`/access-restricted`. The check is server-side; the JavaScript
 redirect is only the user-facing error handling. The restriction page clears
 the rejected NOMAD authorization cookie and its logout link ends the central
 Keycloak session before returning to the GUI.
@@ -260,7 +252,7 @@ environment:
   NOMAD_UBT_ALLOWED_EMAIL_DOMAINS: "uni-bayreuth.de"
   NOMAD_UBT_ALLOWED_EMAILS: "${NOMAD_UBT_ALLOWED_EMAILS:?Set NOMAD_UBT_ALLOWED_EMAILS in .env}"
   NOMAD_UBT_REQUIRE_VERIFIED_EMAIL: "true"
-  NOMAD_UBT_RESTRICTION_URL: "/nomad-oasis/access-restricted"
+  NOMAD_UBT_RESTRICTION_URL: "/access-restricted"
 ```
 
 Multiple exact domains can be comma-separated. An empty
@@ -393,39 +385,6 @@ A minimal `values.yaml` for single-node clusters (Minikube, Kind, k3s, etc.) is 
     ```
 
     Then open [http://localhost/nomad-oasis](http://localhost/nomad-oasis) in your browser.
-
-> [!NOTE]
-> **Secrets:** The API secret is auto-generated by default. For production, you can
-> provide your own by creating a Kubernetes secret and referencing it in your values:
->
-> ```sh
-> kubectl create secret generic nomad-api-secret --from-literal=password='<your-secret-here>'
-> ```
->
-> ```yaml
-> # in kubernetes/values.yaml
-> nomad:
->   secrets:
->     api:
->       existingSecret: "nomad-api-secret"
->       key: password
->       autoGenerate: false
-> ```
->
-> If JupyterHub (NORTH) is enabled, you should also set the hub service API token:
->
-> ```sh
-> kubectl create secret generic nomad-hub-token --from-literal=token='<your-token-here>'
-> ```
->
-> ```yaml
-> nomad:
->   secrets:
->     north:
->       hubServiceApiToken:
->         existingSecret: "nomad-hub-token"
->         key: token
-> ```
 
 > [!TIP]
 > To use your own distribution image, update the `nomad.image` section in `kubernetes/values.yaml`

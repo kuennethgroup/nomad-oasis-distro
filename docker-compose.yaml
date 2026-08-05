@@ -153,7 +153,7 @@ services:
     volumes:
       # - ./configs/nomad.yaml:/app/nomad.yaml
       - ./.volumes/fs:/app/.volumes/fs
-    command: python -m nomad.cli admin run action-internal-worker
+    command: python -m nomad_ubt_access admin run action-internal-worker
     healthcheck:
       test:
         - "CMD"
@@ -204,7 +204,7 @@ services:
   #   volumes:
   #     # - ./configs/nomad.yaml:/app/nomad.yaml
   #     - ./.volumes/fs:/app/.volumes/fs
-  #   command: python -m nomad.cli admin run action-gpu-worker
+  #   command: python -m nomad_ubt_access admin run action-gpu-worker
   #   healthcheck:
   #     test:
   #       - "CMD"
@@ -247,7 +247,7 @@ services:
   #   volumes:
   #     # - ./configs/nomad.yaml:/app/nomad.yaml
   #     - ./.volumes/fs:/app/.volumes/fs
-  #   command: python -m nomad.cli admin run action-cpu-worker
+  #   command: python -m nomad_ubt_access admin run action-cpu-worker
   #   healthcheck:
   #     test:
   #       - "CMD"
@@ -269,7 +269,7 @@ services:
     environment:
       <<: *ubt-access-environment
       NOMAD_SERVICE: nomad_oasis_app
-      NOMAD_SERVICES_API_PORT: 80
+      NOMAD_SERVICES_API_PORT: 443
       NOMAD_FS_EXTERNAL_WORKING_DIRECTORY: "$PWD"
       NOMAD_ELASTIC_HOST: elastic
       NOMAD_MONGO_HOST: mongo
@@ -277,7 +277,7 @@ services:
       NOMAD_NORTH_HUB_HOST: north
       NOMAD_TEMPORAL_HOST: temporal
       NOMAD_UBT_REQUIRE_VERIFIED_EMAIL: "true"
-      NOMAD_UBT_RESTRICTION_URL: "/nomad-oasis/access-restricted"
+      NOMAD_UBT_RESTRICTION_URL: "/access-restricted"
       ACADEMIC_CLOUD_API_KEY: ${ACADEMIC_CLOUD_API_KEY}
     env_file:
       - ./.env
@@ -312,7 +312,9 @@ services:
     container_name: nomad_oasis_north
     environment:
       <<: *ubt-access-environment
-      NOMAD_API_URL: "http://app:8000/nomad-oasis/api/v1"
+      NOMAD_API_URL: "http://app:8000/api/v1"
+      BASE_URL: "/north/"
+      OAUTH_CALLBACK_URL: "https://data.ing.uni-bayreuth.de/north/hub/oauth_callback"
       DOCKER_PREFIX: "nomad-oasis-north"
       DOCKER_NETWORK: "nomad_oasis_network"
     env_file:
@@ -332,7 +334,7 @@ services:
         - "curl"
         - "--fail"
         - "--silent"
-        - "http://localhost:8081/nomad-oasis/north/hub/health"
+        - "http://localhost:9000/north/hub/health"
       interval: 10s
       timeout: 10s
       retries: 30
@@ -362,7 +364,7 @@ services:
     volumes:
       # - ./configs/nomad.yaml:/app/nomad.yaml
       - ./.volumes/fs:/app/.volumes/fs
-    command: python -m nomad.cli admin run logtransfer
+    command: python -m nomad_ubt_access admin run logtransfer
     profiles: ["with_logtransfer"]
 
   # nomad proxy (a reverse proxy for nomad)

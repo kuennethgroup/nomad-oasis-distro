@@ -1,8 +1,13 @@
 services:
   api_host: "data.ing.uni-bayreuth.de"
-  api_base_path: "/nomad-oasis"
+  api_base_path: ""
+  api_port: 443
   https: true
   https_upload: true
+
+ui:
+  app_base: "https://data.ing.uni-bayreuth.de"
+  north_base: "https://data.ing.uni-bayreuth.de/north"
 
 oasis:
   is_oasis: true
@@ -21,7 +26,7 @@ plugins:
 
 meta:
   deployment: "oasis"
-  deployment_url: "https://data.ing.uni-bayreuth.de/nomad-oasis/api"
+  deployment_url: "https://data.ing.uni-bayreuth.de/api"
   maintainer_email: "rayan967@gmail.com"
 
 logstash:
