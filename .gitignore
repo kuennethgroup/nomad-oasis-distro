@@ -1,4 +1,5 @@
 .env.north
+configs/access/allowed-emails.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import functools
+import json
 import os
 import urllib.parse
 from collections.abc import Callable
@@ -46,6 +47,42 @@ def _normalize_emails(value: str | None) -> frozenset[str]:
     )
 
 
+def _load_allowed_emails_file(path: str) -> frozenset[str]:
+    """Load an optional JSON email allowlist.
+
+    A missing file and an empty JSON object both mean that no exact-email
+    allowlist is configured. Invalid JSON or an invalid schema fail startup so
+    a typo cannot silently change the intended policy.
+    """
+    try:
+        with open(path, encoding="utf-8") as file:
+            document = json.load(file)
+    except FileNotFoundError:
+        return frozenset()
+
+    if not isinstance(document, dict):
+        raise ValueError(f"Email allowlist file must contain a JSON object: {path}")
+
+    emails = document.get("allowed_emails", [])
+    if not isinstance(emails, list) or not all(
+        isinstance(email, str) for email in emails
+    ):
+        raise ValueError(
+            f"Email allowlist field 'allowed_emails' must be a list of strings: {path}"
+        )
+
+    return frozenset(email.strip().lower() for email in emails if email.strip())
+
+
+def _allowed_emails_from_environment() -> frozenset[str]:
+    path = os.getenv("NOMAD_UBT_ALLOWED_EMAILS_FILE")
+    if path:
+        return _load_allowed_emails_file(path)
+    # Backward compatibility for deployments that still use the original
+    # comma-separated environment variable.
+    return _normalize_emails(os.getenv("NOMAD_UBT_ALLOWED_EMAILS"))
+
+
 def email_domain(email: str | None) -> str | None:
     """Return an exact, normalized domain for a syntactically simple email."""
     if not isinstance(email, str) or not email:
@@ -72,7 +109,7 @@ class AccessPolicy:
             allowed_domains=_normalize_domains(
                 os.getenv("NOMAD_UBT_ALLOWED_EMAIL_DOMAINS")
             ),
-            allowed_emails=_normalize_emails(os.getenv("NOMAD_UBT_ALLOWED_EMAILS")),
+            allowed_emails=_allowed_emails_from_environment(),
             require_verified_email=_parse_bool(
                 os.getenv("NOMAD_UBT_REQUIRE_VERIFIED_EMAIL"), default=True
             ),

@@ -1,6 +1,6 @@
 x-ubt-access-environment: &ubt-access-environment
   NOMAD_UBT_ALLOWED_EMAIL_DOMAINS: "uni-bayreuth.de"
-  NOMAD_UBT_ALLOWED_EMAILS: "${NOMAD_UBT_ALLOWED_EMAILS:?Set NOMAD_UBT_ALLOWED_EMAILS in .env}"
+  NOMAD_UBT_ALLOWED_EMAILS_FILE: "/etc/nomad-ubt-access/allowed-emails.json"
 
 services:
   # the search engine
@@ -291,6 +291,7 @@ services:
     volumes:
       # - ./configs/nomad.yaml:/app/nomad.yaml
       - ./.volumes/fs:/app/.volumes/fs
+      - ./configs/access:/etc/nomad-ubt-access:ro
     command: python -m nomad_ubt_access admin run app --with-gui --gunicorn --host 0.0.0.0 --workers 2
     healthcheck:
       test:
@@ -327,6 +328,7 @@ services:
       - "nomad_north:/data"
       # Extend the image's standard config with the same UBT policy as NOMAD.
       - "./configs/jupyterhub_ubt_config.py:/etc/jupyterhub/jupyterhub_ubt_config.py:ro"
+      - "./configs/access:/etc/nomad-ubt-access:ro"
     command: ["jupyterhub", "-f", "/etc/jupyterhub/jupyterhub_ubt_config.py"]
     healthcheck:
       test:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 
 from oauthenticator.generic import GenericOAuthenticator
@@ -24,6 +25,32 @@ def _allowed_domains() -> frozenset[str]:
 
 
 def _allowed_emails() -> frozenset[str]:
+    path = os.environ.get("NOMAD_UBT_ALLOWED_EMAILS_FILE")
+    if path:
+        try:
+            with open(path, encoding="utf-8") as allowlist_file:
+                document = json.load(allowlist_file)
+        except FileNotFoundError:
+            return frozenset()
+
+        if not isinstance(document, dict):
+            raise ValueError(
+                f"Email allowlist file must contain a JSON object: {path}"
+            )
+        emails = document.get("allowed_emails", [])
+        if not isinstance(emails, list) or not all(
+            isinstance(email, str) for email in emails
+        ):
+            raise ValueError(
+                "Email allowlist field 'allowed_emails' must be a list of "
+                f"strings: {path}"
+            )
+        return frozenset(
+            email.strip().lower() for email in emails if email.strip()
+        )
+
+    # Backward compatibility for deployments that still use the original
+    # comma-separated environment variable.
     return frozenset(
         email.strip().lower()
         for email in os.environ.get("NOMAD_UBT_ALLOWED_EMAILS", "").split(",")

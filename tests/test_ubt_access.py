@@ -151,6 +151,7 @@ def test_empty_allowlist_preserves_domain_only_policy():
 
 
 def test_allowlist_is_loaded_case_insensitively(monkeypatch):
+    monkeypatch.delenv("NOMAD_UBT_ALLOWED_EMAILS_FILE", raising=False)
     monkeypatch.setenv(
         "NOMAD_UBT_ALLOWED_EMAILS",
         " User@UNI-BAYREUTH.DE, Other@uni-bayreuth.de ",
@@ -159,6 +160,47 @@ def test_allowlist_is_loaded_case_insensitively(monkeypatch):
     assert loaded.allowed_emails == frozenset(
         {"user@uni-bayreuth.de", "other@uni-bayreuth.de"}
     )
+
+
+def test_allowlist_is_loaded_from_json_case_insensitively(monkeypatch, tmp_path):
+    allowlist = tmp_path / "allowed-emails.json"
+    allowlist.write_text(
+        '{"allowed_emails": [" User@UNI-BAYREUTH.DE ", '
+        '"Other@uni-bayreuth.de"]}'
+    )
+    monkeypatch.setenv("NOMAD_UBT_ALLOWED_EMAILS_FILE", str(allowlist))
+
+    loaded = AccessPolicy.from_environment()
+
+    assert loaded.allowed_emails == frozenset(
+        {"user@uni-bayreuth.de", "other@uni-bayreuth.de"}
+    )
+
+
+@pytest.mark.parametrize("contents", [None, "{}", '{"allowed_emails": []}'])
+def test_missing_or_empty_json_allowlist_is_allowed(monkeypatch, tmp_path, contents):
+    allowlist = tmp_path / "allowed-emails.json"
+    if contents is not None:
+        allowlist.write_text(contents)
+    monkeypatch.setenv("NOMAD_UBT_ALLOWED_EMAILS_FILE", str(allowlist))
+
+    loaded = AccessPolicy.from_environment()
+
+    assert loaded.allowed_emails == frozenset()
+    loaded.validate_email("any-user@uni-bayreuth.de")
+
+
+@pytest.mark.parametrize(
+    "contents",
+    ["[]", '{"allowed_emails": "user@uni-bayreuth.de"}', "not-json"],
+)
+def test_invalid_json_allowlist_fails_closed(monkeypatch, tmp_path, contents):
+    allowlist = tmp_path / "allowed-emails.json"
+    allowlist.write_text(contents)
+    monkeypatch.setenv("NOMAD_UBT_ALLOWED_EMAILS_FILE", str(allowlist))
+
+    with pytest.raises((ValueError, OSError)):
+        AccessPolicy.from_environment()
 
 
 def test_anonymous_access_is_not_changed():
@@ -222,7 +264,11 @@ def test_distribution_wires_the_policy_into_all_access_paths():
     assert "python -m nomad.cli" not in compose
     assert "--reinstall-package nomad-distribution" in dockerfile
     assert 'NOMAD_UBT_ALLOWED_EMAIL_DOMAINS: "uni-bayreuth.de"' in compose
-    assert "${NOMAD_UBT_ALLOWED_EMAILS:?" in compose
+    assert (
+        'NOMAD_UBT_ALLOWED_EMAILS_FILE: '
+        '"/etc/nomad-ubt-access/allowed-emails.json"' in compose
+    )
+    assert "./configs/access:/etc/nomad-ubt-access:ro" in compose
     assert 'NOMAD_UBT_RESTRICTION_URL: "/access-restricted"' in compose
     assert "NOMAD_SERVICES_API_PORT: 443" in compose
     assert 'NOMAD_API_URL: "http://app:8000/api/v1"' in compose

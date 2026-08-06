@@ -222,7 +222,7 @@ Keycloak claims contain:
 - an email address with the exact domain `uni-bayreuth.de`; and
 - the boolean claim `email_verified: true`; and
 - an email address in the exact allowlist configured by
-  `NOMAD_UBT_ALLOWED_EMAILS`.
+  `configs/access/allowed-emails.json`, when that list is populated.
 
 The application is started through the `nomad_ubt_access` wrapper. It enforces
 the domain and exact email allowlist for Keycloak, personal access, simple, and
@@ -239,30 +239,41 @@ and exact-email rules before JupyterHub creates a user session. It requests the
 OIDC `email` scope in addition to `openid` and `profile`.
 
 The policy is configured independently of NOMAD's own configuration model.
-Keep the user list in the ignored `.env` file:
+Copy the example to the ignored allowlist file and edit it as needed:
 
-```dotenv
-NOMAD_UBT_ALLOWED_EMAILS=person@uni-bayreuth.de,other@uni-bayreuth.de
+```sh
+cp configs/access/allowed-emails.example.json configs/access/allowed-emails.json
 ```
 
-Compose passes it to both NOMAD and NORTH:
+```json
+{
+  "allowed_emails": [
+    "person@uni-bayreuth.de",
+    "other@uni-bayreuth.de"
+  ]
+}
+```
+
+Compose mounts the containing directory and passes the same optional file path
+to both NOMAD and NORTH:
 
 ```yaml
 environment:
   NOMAD_UBT_ALLOWED_EMAIL_DOMAINS: "uni-bayreuth.de"
-  NOMAD_UBT_ALLOWED_EMAILS: "${NOMAD_UBT_ALLOWED_EMAILS:?Set NOMAD_UBT_ALLOWED_EMAILS in .env}"
+  NOMAD_UBT_ALLOWED_EMAILS_FILE: "/etc/nomad-ubt-access/allowed-emails.json"
   NOMAD_UBT_REQUIRE_VERIFIED_EMAIL: "true"
   NOMAD_UBT_RESTRICTION_URL: "/access-restricted"
 ```
 
-Multiple exact domains can be comma-separated. An empty
-`NOMAD_UBT_ALLOWED_EMAILS` permits every verified user in an allowed domain;
-when it is set, only the comma-separated addresses are accepted. Email
-comparisons are case-insensitive and exact. The policy is disabled only when
-both the domain and email settings are empty. Do not use a suffix such as
-`bayreuth.de`: exact comparison intentionally rejects subdomains and lookalike
-domains. Production Compose deliberately treats a missing allowlist variable as
-an error so it cannot silently grant access to every user in the domain.
+Multiple exact domains can be comma-separated. A missing allowlist file, an
+empty JSON object (`{}`), or an empty `allowed_emails` list permits every
+verified user in an allowed domain. When the list is populated, only those
+addresses are accepted. Email comparisons are case-insensitive and exact. The
+policy is disabled only when both the domain and email settings are empty. Do
+not use a suffix such as `bayreuth.de`: exact comparison intentionally rejects
+subdomains and lookalike domains. For compatibility, deployments that do not
+configure `NOMAD_UBT_ALLOWED_EMAILS_FILE` may still use the comma-separated
+`NOMAD_UBT_ALLOWED_EMAILS` environment variable.
 
 The central Keycloak access token and user-info response must expose `email`
 and `email_verified`. Verify this with a test account before enabling the policy
