@@ -17,7 +17,7 @@ services:
       interval: 10s
       timeout: 10s
       retries: 30
-      start_period: 10s
+      start_period: 30s
 
   # the search engine
   elastic:
