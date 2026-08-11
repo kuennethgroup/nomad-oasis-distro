@@ -3,6 +3,24 @@ x-ubt-access-environment: &ubt-access-environment
   NOMAD_UBT_ALLOWED_EMAILS_FILE: "/etc/nomad-ubt-access/allowed-emails.json"
 
 services:
+
+  # watchtower container, will pull new images from github automatically at 3 AM
+  watchtower:
+    image: nickfedor/watchtower
+    container_name: nomad_oasis_watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      # Instruct Watchtower to ONLY update containers with the explicit label
+      # label "com.centurylinklabs.watchtower.enable=true"
+      - WATCHTOWER_LABEL_ENABLE=true
+      # Automatically remove old images after updating
+      - WATCHTOWER_CLEANUP=true
+      - TZ=Europe/Berlin # Change to your preferred timezone
+      - WATCHTOWER_SCHEDULE=0 0 3 * * * #3 AM
+
+
   # the search engine
   elastic:
     restart: unless-stopped
@@ -133,6 +151,8 @@ services:
   worker:
     restart: unless-stopped
     image: ghcr.io/kuennethgroup/nomad-oasis-distro:main
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
     platform: linux/amd64
     environment:
       NOMAD_SERVICE: nomad_oasis_worker
@@ -264,6 +284,8 @@ services:
   app:
     restart: unless-stopped
     image: ghcr.io/kuennethgroup/nomad-oasis-distro:main
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
     platform: linux/amd64
     container_name: nomad_oasis_app
     environment:
@@ -350,6 +372,8 @@ services:
   logtransfer:
     restart: unless-stopped
     image: ghcr.io/kuennethgroup/nomad-oasis-distro:main
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
     platform: linux/amd64
     container_name: nomad_oasis_logtransfer
     environment:
