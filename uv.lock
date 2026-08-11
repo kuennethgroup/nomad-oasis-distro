@@ -3604,7 +3604,7 @@ wheels = [
 [[package]]
 name = "nomad-auto-upload-tables"
 version = "0.1.0"
-source = { git = "https://github.com/kuennethgroup/nomad-ai-group-data.git#6e37becf89d7878ed511859413fdb31d382b0318" }
+source = { git = "https://github.com/kuennethgroup/nomad-ai-group-data.git#04a5b032c2eb8705cb4e2c61eab6330ec47e9f36" }
 dependencies = [
     { name = "nomad-lab" },
     { name = "openai" },
