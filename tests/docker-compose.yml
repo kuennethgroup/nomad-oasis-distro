@@ -34,15 +34,16 @@ services:
     volumes:
       - mongo:/data/db
       - ./.volumes/mongo:/backup
-    command: mongod --logpath=/dev/null # --quiet
+    # Keep startup errors visible in CI logs.
+    command: mongod
     healthcheck:
       test:
         - "CMD"
         - "mongosh"
-        - "mongo:27017/test"
+        - "mongodb://localhost:27017/test"
         - "--quiet"
         - "--eval"
-        - "'db.runCommand({ping:1}).ok'"
+        - "quit(db.adminCommand({ping:1}).ok === 1 ? 0 : 1)"
       interval: 10s
       timeout: 10s
       retries: 30
