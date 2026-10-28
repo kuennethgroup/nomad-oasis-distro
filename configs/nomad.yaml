@@ -1,13 +1,9 @@
 services:
   api_host: "data.ing.uni-bayreuth.de"
-  api_base_path: ""
+  api_base_path: "/backend"
   api_port: 443
   https: true
   https_upload: true
-
-ui:
-  app_base: "https://data.ing.uni-bayreuth.de"
-  north_base: "https://data.ing.uni-bayreuth.de/north"
 
 oasis:
   is_oasis: true
@@ -26,7 +22,7 @@ plugins:
 
 meta:
   deployment: "oasis"
-  deployment_url: "https://data.ing.uni-bayreuth.de/api"
+  deployment_url: "https://data.ing.uni-bayreuth.de/backend/api"
   maintainer_email: "rayan967@gmail.com"
 
 logstash:
@@ -40,7 +36,7 @@ mongo:
 
 elastic:
   entries_index: nomad_oasis_entries_v1
-  materials_index: nomad_oasis_materials_v1
+  version: 9
 
 north:
   enabled: true

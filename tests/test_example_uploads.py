@@ -79,9 +79,9 @@ def test_example_uploads(entry_point_id, auth):
         post_request, url="entries/query", auth=auth, json={"upload_id": upload_id}
     )
 
-    entry_ids = [entry.entry_id for entry in response.json()["data"]]
+    entry_ids = [entry["entry_id"] for entry in response.json()["data"]]
     for entry_id in entry_ids:
-        url = (f"entries/{entry_id}/archive",)
+        url = f"entries/{entry_id}/archive"
         response = make_request_with_retry(get_request, url=url, auth=auth)
         logs = response.json()["data"]["archive"]["processing_logs"]
         for log in logs:

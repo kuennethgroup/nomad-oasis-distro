@@ -2,6 +2,14 @@
 
 # kuennethgroup's NOMAD Oasis Distribution
 
+## NOMAD 2.0 upgrade
+
+This branch targets NOMAD and GUI 2.0.0 with Elasticsearch 9. Read the
+[Bayreuth migration runbook](docs/upgrade-nomad-2.0.md) before deployment.
+The public GUI is at `/`, the legacy GUI remains at `/gui/`, and API/NORTH
+services move under `/backend`. Older deployment examples below describe 1.x
+and must not be used for the 2.0 cutover without the runbook.
+
 This is the NOMAD Oasis distribution of kuennethgroup.
 Below are instructions for how to [deploy this distribution](#deploying-the-distribution)
 and how to customize it through [adding plugins](#adding-a-plugin).

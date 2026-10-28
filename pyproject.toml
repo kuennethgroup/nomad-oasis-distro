@@ -10,7 +10,6 @@ classifiers = [
   "Intended Audience :: Developers",
   "Operating System :: OS Independent",
   "Programming Language :: Python",
-  "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
 ]
@@ -18,10 +17,10 @@ name = "nomad-distribution"
 description = "nomad distribution template"
 dynamic = ["version"]
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = { file = "LICENSE" }
 dependencies = [
-  "nomad-lab[infrastructure]==1.4.3",
+  "nomad-lab[infrastructure]==2.0.0",
 ]
 
 [project.urls]
@@ -31,13 +30,14 @@ repository = "https://github.com/kuennethgroup/nomad-oasis-distro"
 # Add your plugins to the list below.
 plugins = [
   "nomad-north-jupyter>=0.2.6",
-  "nomad-auto-upload-tables @ git+https://github.com/kuennethgroup/nomad-ai-group-data.git",
+  "nomad-gui==2.0.0",
+  "nomad-auto-upload-tables @ git+https://github.com/kuennethgroup/nomad-ai-group-data.git@94c3492a596efca93ffd6555b03ecf4247c57277",
 ]
 jupyter = ["jupyter-events"]
 gpu-action = []
 cpu-action = []
 
-dev = ["nomad-lab[infrastructure, dev]==1.4.3"]
+dev = ["nomad-lab[infrastructure, dev]==2.0.0"]
 
 [tool.uv]
 extra-index-url = [

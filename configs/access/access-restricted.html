@@ -79,7 +79,7 @@
           "fairdi_nomad_prod/protocol/openid-connect/logout";
 
         function clearNomadAuthorizationCookie() {
-          ["/api", "/"].forEach(function (path) {
+          ["/backend/api", "/backend", "/api", "/"].forEach(function (path) {
             document.cookie =
               "Authorization=; Path=" + path +
               "; Max-Age=0; SameSite=Strict; Secure";
@@ -98,7 +98,7 @@
           logoutUrl.searchParams.set("client_id", "nomad_public");
           logoutUrl.searchParams.set(
             "post_logout_redirect_uri",
-            window.location.origin + "/gui/"
+            window.location.origin + "/"
           );
           window.location.assign(logoutUrl.toString());
         });
