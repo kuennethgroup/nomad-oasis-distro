@@ -1,0 +1,9 @@
+.venv
+.env
+.env.*
+.volumes
+configs/access/allowed-emails.json
+configs/access/allowed-emails.json.*
+tls
+__pycache__
+.pytest_cache

@@ -1,3 +1,4 @@
+import asyncio
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -12,8 +13,6 @@ from nomad_ubt_access.policy import (
     email_domain,
     install,
 )
-from nomad_ubt_access.urls import install_root_path_urls
-
 
 ROOT = Path(__file__).parent.parent
 ALLOWED_EMAILS = frozenset(
@@ -52,7 +51,7 @@ def guarded_user(email: str, *, claims: dict | None = None):
         policy(),
         lambda _token: claims or {},
     )
-    return resolver(keycloak_token=token, request=None)
+    return asyncio.run(resolver(keycloak_token=token, request=None))
 
 
 def restriction_reason(exc_info: pytest.ExceptionInfo[HTTPException]) -> str:
@@ -134,10 +133,12 @@ def test_personal_access_token_uses_the_stored_user_email():
         lambda _token: pytest.fail("PAT must not be decoded as a Keycloak token"),
     )
     assert (
-        resolver(
-            keycloak_token="nomad_pat_example",
-            personal_access_token="nomad_pat_example",
-            request=None,
+        asyncio.run(
+            resolver(
+                keycloak_token="nomad_pat_example",
+                personal_access_token="nomad_pat_example",
+                request=None,
+            )
         )
         is user
     )
@@ -165,8 +166,7 @@ def test_allowlist_is_loaded_case_insensitively(monkeypatch):
 def test_allowlist_is_loaded_from_json_case_insensitively(monkeypatch, tmp_path):
     allowlist = tmp_path / "allowed-emails.json"
     allowlist.write_text(
-        '{"allowed_emails": [" User@UNI-BAYREUTH.DE ", '
-        '"Other@uni-bayreuth.de"]}'
+        '{"allowed_emails": [" User@UNI-BAYREUTH.DE ", "Other@uni-bayreuth.de"]}'
     )
     monkeypatch.setenv("NOMAD_UBT_ALLOWED_EMAILS_FILE", str(allowlist))
 
@@ -209,7 +209,26 @@ def test_anonymous_access_is_not_changed():
         policy(),
         lambda _token: pytest.fail("anonymous requests have no Keycloak token"),
     )
-    assert resolver(keycloak_token=None, request=None) is None
+    assert asyncio.run(resolver(keycloak_token=None, request=None)) is None
+
+
+def test_async_upstream_resolver_is_awaited():
+    user = SimpleNamespace(email="user@uni-bayreuth.de")
+
+    async def original(**_kwargs):
+        return user
+
+    resolver = build_guarded_resolver(original, policy(), lambda _token: {})
+    assert asyncio.run(resolver(request=None)) is user
+
+
+def test_async_upstream_resolver_denies_unlisted_user():
+    async def original(**_kwargs):
+        return SimpleNamespace(email="unlisted@uni-bayreuth.de")
+
+    resolver = build_guarded_resolver(original, policy(), lambda _token: {})
+    with pytest.raises(HTTPException):
+        asyncio.run(resolver(request=None))
 
 
 def test_install_is_idempotent(monkeypatch):
@@ -223,30 +242,18 @@ def test_install_is_idempotent(monkeypatch):
         monkeypatch.setattr(auth_router, "_resolve_user_with_scopes", original)
 
 
-def test_root_path_urls_are_normalized(monkeypatch):
+def test_backend_urls_use_nomad_2_mount():
     from nomad.config.models.config import Services
 
-    original = Services.api_url
-    config = SimpleNamespace(
-        services=Services(
-            api_host="data.ing.uni-bayreuth.de",
-            api_port=443,
-            api_base_path="",
-            https=True,
-        ),
-        ui=SimpleNamespace(app_base=None, north_base=None),
+    services = Services(
+        api_host="data.ing.uni-bayreuth.de",
+        api_port=443,
+        api_base_path="/backend",
+        https=True,
     )
-    try:
-        assert install_root_path_urls(config) is True
-        assert config.services.api_url() == "https://data.ing.uni-bayreuth.de/api"
-        assert config.services.api_url(api="api/v1") == (
-            "https://data.ing.uni-bayreuth.de/api/v1"
-        )
-        assert config.ui.app_base == "https://data.ing.uni-bayreuth.de"
-        assert config.ui.north_base == "https://data.ing.uni-bayreuth.de/north"
-        assert install_root_path_urls(config) is False
-    finally:
-        monkeypatch.setattr(Services, "api_url", original)
+    assert services.api_url(api="api/v1") == (
+        "https://data.ing.uni-bayreuth.de/backend/api/v1"
+    )
 
 
 def test_distribution_wires_the_policy_into_all_access_paths():
@@ -265,29 +272,31 @@ def test_distribution_wires_the_policy_into_all_access_paths():
     assert "--reinstall-package nomad-distribution" in dockerfile
     assert 'NOMAD_UBT_ALLOWED_EMAIL_DOMAINS: "uni-bayreuth.de"' in compose
     assert (
-        'NOMAD_UBT_ALLOWED_EMAILS_FILE: '
+        "NOMAD_UBT_ALLOWED_EMAILS_FILE: "
         '"/etc/nomad-ubt-access/allowed-emails.json"' in compose
     )
     assert "./configs/access:/etc/nomad-ubt-access:ro" in compose
     assert 'NOMAD_UBT_RESTRICTION_URL: "/access-restricted"' in compose
     assert "NOMAD_SERVICES_API_PORT: 443" in compose
-    assert 'NOMAD_API_URL: "http://app:8000/api/v1"' in compose
-    assert 'BASE_URL: "/north/"' in compose
+    assert 'NOMAD_API_URL: "http://app:8000/backend/api/v1"' in compose
+    assert 'BASE_URL: "/backend/north/"' in compose
     assert (
-        'OAUTH_CALLBACK_URL: "https://data.ing.uni-bayreuth.de/north/hub/oauth_callback"'
+        'OAUTH_CALLBACK_URL: "https://data.ing.uni-bayreuth.de/backend/north/hub/oauth_callback"'
         in compose
     )
-    assert "http://localhost:9000/north/hub/health" in compose
+    assert "http://localhost:9000/backend/north/hub/health" in compose
     assert "jupyterhub_ubt_config.py" in compose
-    assert 'api_base_path: ""' in nomad_config
+    assert 'api_base_path: "/backend"' in nomad_config
     assert "api_port: 443" in nomad_config
-    assert 'deployment_url: "https://data.ing.uni-bayreuth.de/api"' in nomad_config
-    assert 'app_base: "https://data.ing.uni-bayreuth.de"' in nomad_config
-    assert 'north_base: "https://data.ing.uni-bayreuth.de/north"' in nomad_config
+    assert (
+        'deployment_url: "https://data.ing.uni-bayreuth.de/backend/api"' in nomad_config
+    )
+    assert 'name: "nomad_oasis_elastic_9"' in compose
+    assert "NOMAD_ELASTIC_VERSION: 9" in compose
     assert "location = / {" in nginx
-    assert "return 302 /gui/;" in nginx
-    assert "location /gui/" in nginx
-    assert "location /north/" in nginx
+    assert "location ^~ /gui/" in nginx
+    assert "location /backend/north/" in nginx
+    assert nginx.count('<script src="/access-policy.js"></script>') >= 5
     assert "location = /access-policy.js" in nginx
     assert "location = /access-restricted" in nginx
     assert 'fallbackUrl = "/access-restricted"' in access_policy
@@ -295,8 +304,7 @@ def test_distribution_wires_the_policy_into_all_access_paths():
     assert "protocol/openid-connect/logout" in restricted_page
     assert "post_logout_redirect_uri" in restricted_page
     assert "Authorization=; Path=" in restricted_page
-    assert 'window.location.origin + "/gui/"' in restricted_page
-    assert "/nomad-oasis/" not in nginx
+    assert 'window.location.origin + "/"' in restricted_page
     assert "/nomad-oasis/" not in access_policy
     assert "/nomad-oasis/" not in restricted_page
     assert "galadriel" not in readme.lower()

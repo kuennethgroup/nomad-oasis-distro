@@ -24,11 +24,12 @@ services:
   # the search engine
   elastic:
     restart: unless-stopped
-    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.28
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.5.0
     container_name: nomad_oasis_elastic
     environment:
       - ES_JAVA_OPTS=-Xms512m -Xmx512m
       - discovery.type=single-node
+      - xpack.security.enabled=false
     volumes:
       - elastic:/usr/share/elasticsearch/data
     healthcheck:
@@ -150,15 +151,15 @@ services:
   # nomad worker (processing)
   worker:
     restart: unless-stopped
-    image: ghcr.io/kuennethgroup/nomad-oasis-distro:main
+    image: ${NOMAD_IMAGE:-ghcr.io/kuennethgroup/nomad-oasis-distro:2.0.0-ubt.1}
     labels:
-      - "com.centurylinklabs.watchtower.enable=true"
+      - "com.centurylinklabs.watchtower.enable=false"
     platform: linux/amd64
     environment:
       NOMAD_SERVICE: nomad_oasis_worker
       NOMAD_ELASTIC_HOST: elastic
       NOMAD_MONGO_HOST: mongo
-      NOMAD_LOGSTASH_HOST: logtransfer
+      NOMAD_ELASTIC_VERSION: 9
       NOMAD_TEMPORAL_HOST: temporal
       ACADEMIC_CLOUD_API_KEY: ${ACADEMIC_CLOUD_API_KEY}
     env_file:
@@ -283,9 +284,9 @@ services:
   # nomad app (api + proxy)
   app:
     restart: unless-stopped
-    image: ghcr.io/kuennethgroup/nomad-oasis-distro:main
+    image: ${NOMAD_IMAGE:-ghcr.io/kuennethgroup/nomad-oasis-distro:2.0.0-ubt.1}
     labels:
-      - "com.centurylinklabs.watchtower.enable=true"
+      - "com.centurylinklabs.watchtower.enable=false"
     platform: linux/amd64
     container_name: nomad_oasis_app
     environment:
@@ -295,7 +296,7 @@ services:
       NOMAD_FS_EXTERNAL_WORKING_DIRECTORY: "$PWD"
       NOMAD_ELASTIC_HOST: elastic
       NOMAD_MONGO_HOST: mongo
-      NOMAD_LOGSTASH_HOST: logtransfer
+      NOMAD_ELASTIC_VERSION: 9
       NOMAD_NORTH_HUB_HOST: north
       NOMAD_TEMPORAL_HOST: temporal
       NOMAD_UBT_REQUIRE_VERIFIED_EMAIL: "true"
@@ -335,9 +336,9 @@ services:
     container_name: nomad_oasis_north
     environment:
       <<: *ubt-access-environment
-      NOMAD_API_URL: "http://app:8000/api/v1"
-      BASE_URL: "/north/"
-      OAUTH_CALLBACK_URL: "https://data.ing.uni-bayreuth.de/north/hub/oauth_callback"
+      NOMAD_API_URL: "http://app:8000/backend/api/v1"
+      BASE_URL: "/backend/north/"
+      OAUTH_CALLBACK_URL: "https://data.ing.uni-bayreuth.de/backend/north/hub/oauth_callback"
       DOCKER_PREFIX: "nomad-oasis-north"
       DOCKER_NETWORK: "nomad_oasis_network"
     env_file:
@@ -358,7 +359,7 @@ services:
         - "curl"
         - "--fail"
         - "--silent"
-        - "http://localhost:9000/north/hub/health"
+        - "http://localhost:9000/backend/north/hub/health"
       interval: 10s
       timeout: 10s
       retries: 30
@@ -366,32 +367,6 @@ services:
     depends_on:
       app:
         condition: service_healthy
-
-  # nomad logtransfer
-  # to enable the logtransfer service run "docker compose --profile with_logtransfer up"
-  logtransfer:
-    restart: unless-stopped
-    image: ghcr.io/kuennethgroup/nomad-oasis-distro:main
-    labels:
-      - "com.centurylinklabs.watchtower.enable=true"
-    platform: linux/amd64
-    container_name: nomad_oasis_logtransfer
-    environment:
-      NOMAD_SERVICE: nomad_oasis_logtransfer
-      NOMAD_ELASTIC_HOST: elastic
-      NOMAD_MONGO_HOST: mongo
-    env_file:
-      - ./.env
-    depends_on:
-      elastic:
-        condition: service_healthy
-      mongo:
-        condition: service_healthy
-    volumes:
-      # - ./configs/nomad.yaml:/app/nomad.yaml
-      - ./.volumes/fs:/app/.volumes/fs
-    command: python -m nomad_ubt_access admin run logtransfer
-    profiles: ["with_logtransfer"]
 
   # nomad proxy (a reverse proxy for nomad)
   proxy:
@@ -413,6 +388,7 @@ services:
     volumes:
       # Shared config
       - ./configs/nginx_base_conf:/etc/nginx/conf.d/nginx_base_conf:ro
+      - ./configs/nginx_maps_conf:/etc/nginx/conf.d/nginx_maps_conf:ro
       # Traefik terminates TLS and forwards HTTP on the Docker network.
       - ./configs/nginx_http.conf:/etc/nginx/conf.d/default.conf:ro
       - ./configs/access/access-policy.js:/usr/share/nginx/html/access-policy.js:ro
@@ -444,7 +420,7 @@ volumes:
   mongo_config:
     name: "nomad_oasis_mongo_config"
   elastic:
-    name: "nomad_oasis_elastic"
+    name: "nomad_oasis_elastic_9"
   postgresql:
     name: "nomad_oasis_postgresql"
   nomad_north:

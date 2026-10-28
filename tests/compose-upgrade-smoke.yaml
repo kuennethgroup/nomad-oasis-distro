@@ -1,0 +1,63 @@
+# Isolated smoke stack: no host ports, production networks, fixed container
+# names, private credentials, or production storage. Not a restore rehearsal.
+name: nomad-upgrade-smoke
+services:
+  mongo:
+    image: mongo:8.0
+    tmpfs: /data/db
+    volumes:
+      - mongo_config:/data/configdb
+    healthcheck:
+      test: [CMD, mongosh, --quiet, --eval, "db.runCommand({ping:1}).ok"]
+      interval: 5s
+      retries: 30
+  elastic:
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.5.0
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+    volumes:
+      - elastic:/usr/share/elasticsearch/data
+    healthcheck:
+      test: [CMD, curl, -fsS, "http://localhost:9200/_cluster/health"]
+      interval: 5s
+      retries: 60
+  temporal:
+    image: ghcr.io/fairmat-nfdi/temporal-dev-server:v1.4.0
+    healthcheck:
+      test: [CMD-SHELL, "temporal operator cluster health --address $$(hostname -i):7233"]
+      interval: 5s
+      retries: 60
+  app:
+    image: nomad-oasis-upgrade:2.0-test
+    command: python -m nomad_ubt_access admin run app --with-gui --gunicorn --host 0.0.0.0 --workers 1
+    environment:
+      NOMAD_ELASTIC_HOST: elastic
+      NOMAD_ELASTIC_VERSION: 9
+      NOMAD_MONGO_HOST: mongo
+      NOMAD_TEMPORAL_HOST: temporal
+      NOMAD_NORTH_ENABLED: "false"
+      NOMAD_SERVICES_API_HOST: localhost
+      NOMAD_SERVICES_API_PORT: 80
+      NOMAD_SERVICES_HTTPS: "false"
+      NOMAD_SERVICES_HTTPS_UPLOAD: "false"
+      NOMAD_SERVICES_API_SECRET: smoke-test-only-do-not-use-in-production
+      NOMAD_UBT_ALLOWED_EMAIL_DOMAINS: uni-bayreuth.de
+    volumes:
+      - fs:/app/.volumes/fs
+    depends_on:
+      mongo:
+        condition: service_healthy
+      elastic:
+        condition: service_healthy
+      temporal:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, curl, -fsS, "http://localhost:8000/-/health"]
+      interval: 5s
+      retries: 30
+volumes:
+  mongo_config:
+  elastic:
+  fs:

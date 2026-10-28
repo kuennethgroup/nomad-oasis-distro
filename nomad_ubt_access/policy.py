@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import functools
+import inspect
 import json
 import os
 import urllib.parse
@@ -12,7 +13,6 @@ from typing import Any
 
 import jwt
 from fastapi import HTTPException, status
-
 
 ACCESS_RESTRICTION_CODE = "email_domain_not_authorized"
 _INSTALL_MARKER = "_nomad_ubt_access_policy_installed"
@@ -104,7 +104,7 @@ class AccessPolicy:
     restriction_url: str = "/access-restricted"
 
     @classmethod
-    def from_environment(cls) -> "AccessPolicy":
+    def from_environment(cls) -> AccessPolicy:
         return cls(
             allowed_domains=_normalize_domains(
                 os.getenv("NOMAD_UBT_ALLOWED_EMAIL_DOMAINS")
@@ -198,8 +198,10 @@ def build_guarded_resolver(
     """Wrap NOMAD's central user resolver with the distribution policy."""
 
     @functools.wraps(original)
-    def guarded_resolver(*args: Any, **kwargs: Any) -> Any:
+    async def guarded_resolver(*args: Any, **kwargs: Any) -> Any:
         user = original(*args, **kwargs)
+        if inspect.isawaitable(user):
+            user = await user
         if user is None:
             return None
 

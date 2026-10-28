@@ -13,11 +13,11 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  UV_VERSION: 0.9
+  UV_VERSION: 0.11.7
   PYTHON_VERSION: 3.12
   JUPYTER_VERSION: "2025-04-14"
   # If you want to include custom documentation, create a fork of the repo below and link the forked repo here
-  NOMAD_DOCS_REPO: https://github.com/FAIRmat-NFDI/nomad-docs.git
+  NOMAD_DOCS_REPO: ""
   NOMAD_DOCS_REPO_REF: ""
   # If you want to skip the tests for some plugins, add them here as a single string where
   # each plugin is separated by whitespace
@@ -50,19 +50,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Update lock file
-        run: uv lock --upgrade-package nomad-auto-upload-tables
-
-      # Commits any changes made to the lockfile
-      - name: Commit lock file changes
-        if: github.ref_type != 'tag'
-        run: |
-          git config --global user.name github-actions
-          git config --global user.email github-actions@github.com
-          git add uv.lock
-          if [[ `git status --porcelain` ]]; then
-            git commit -m "Update lockfile"
-            git push origin -o ci.skip # prevent triggering the pipeline again
-          fi
+        run: uv lock --check
 
   # Job 2: Run unit tests for all of the plugin
   plugin_unit_tests:
