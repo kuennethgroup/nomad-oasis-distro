@@ -6,4 +6,5 @@ client:
   user: "test"
   password: "password"
 services:
+  api_base_path: "/backend"
   upload_limit: 1000
