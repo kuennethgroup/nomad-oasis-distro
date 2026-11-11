@@ -47,7 +47,9 @@ services:
   # the user data db
   mongo:
     restart: unless-stopped
-    image: docker.io/mongo:8.0
+    # MongoDB's publisher image includes the Ubuntu kernel fix SERVER-131779.
+    # Version 8.0.37-ubuntu2204, pinned to its multi-architecture digest.
+    image: docker.io/mongodb/mongodb-community-server:8.0.37-ubuntu2204@sha256:35194c5135e6a238715e8efa7b8f66988bf74a04894c4469ee16bb97a0c3c2e3
     container_name: nomad_oasis_mongo
     environment:
       - MONGO_DATA_DIR=/data/db
@@ -56,15 +58,15 @@ services:
       - mongo:/data/db
       - mongo_config:/data/configdb
       - ./.volumes/mongo:/backup
-    command: mongod --logpath=/dev/null # --quiet
+    command: ["mongod", "--bind_ip_all"]
     healthcheck:
       test:
         - "CMD"
         - "mongosh"
-        - "mongo:27017/test"
+        - "mongodb://localhost:27017/test"
         - "--quiet"
         - "--eval"
-        - "'db.runCommand({ping:1}).ok'"
+        - "quit(db.adminCommand({ping:1}).ok === 1 ? 0 : 1)"
       interval: 10s
       timeout: 10s
       retries: 30
@@ -416,9 +418,9 @@ services:
 
 volumes:
   mongo:
-    name: "nomad_oasis_mongo"
+    name: "nomad_oasis_mongo_8037"
   mongo_config:
-    name: "nomad_oasis_mongo_config"
+    name: "nomad_oasis_mongo_config_8037"
   elastic:
     name: "nomad_oasis_elastic_9"
   postgresql:
