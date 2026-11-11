@@ -3106,7 +3106,7 @@ wheels = [
 [[package]]
 name = "nomad-auto-upload-tables"
 version = "0.1.0"
-source = { git = "https://github.com/kuennethgroup/nomad-ai-group-data.git?rev=94c3492a596efca93ffd6555b03ecf4247c57277#94c3492a596efca93ffd6555b03ecf4247c57277" }
+source = { git = "https://github.com/kuennethgroup/nomad-ai-group-data.git?rev=70d63d0ba73dcad5a09189edfb624e8fb4bf7b00#70d63d0ba73dcad5a09189edfb624e8fb4bf7b00" }
 dependencies = [
     { name = "nomad-lab" },
     { name = "openai" },
@@ -3138,7 +3138,7 @@ plugins = [
 [package.metadata]
 requires-dist = [
     { name = "jupyter-events", marker = "extra == 'jupyter'" },
-    { name = "nomad-auto-upload-tables", marker = "extra == 'plugins'", git = "https://github.com/kuennethgroup/nomad-ai-group-data.git?rev=94c3492a596efca93ffd6555b03ecf4247c57277" },
+    { name = "nomad-auto-upload-tables", marker = "extra == 'plugins'", git = "https://github.com/kuennethgroup/nomad-ai-group-data.git?rev=70d63d0ba73dcad5a09189edfb624e8fb4bf7b00" },
     { name = "nomad-gui", marker = "extra == 'plugins'", specifier = "==2.0.0" },
     { name = "nomad-lab", extras = ["dev", "infrastructure"], marker = "extra == 'dev'", specifier = "==2.0.0" },
     { name = "nomad-lab", extras = ["infrastructure"], specifier = "==2.0.0" },

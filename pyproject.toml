@@ -31,7 +31,7 @@ repository = "https://github.com/kuennethgroup/nomad-oasis-distro"
 plugins = [
   "nomad-north-jupyter>=0.2.6",
   "nomad-gui==2.0.0",
-  "nomad-auto-upload-tables @ git+https://github.com/kuennethgroup/nomad-ai-group-data.git@94c3492a596efca93ffd6555b03ecf4247c57277",
+  "nomad-auto-upload-tables @ git+https://github.com/kuennethgroup/nomad-ai-group-data.git@70d63d0ba73dcad5a09189edfb624e8fb4bf7b00",
 ]
 jupyter = ["jupyter-events"]
 gpu-action = []
